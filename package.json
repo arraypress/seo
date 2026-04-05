@@ -1,0 +1,25 @@
+{
+  "name": "@arraypress/seo",
+  "version": "1.0.0",
+  "description": "HTML meta tag builder for SEO. Open Graph, Twitter Cards, canonical URLs, robots directives, hreflang, and site verification.",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "files": ["src"],
+  "scripts": {
+    "test": "node --test tests/seo.test.js"
+  },
+  "keywords": ["seo", "meta", "open-graph", "twitter-card", "canonical", "robots", "hreflang", "json-ld", "head"],
+  "author": "David Sherlock",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arraypress/seo"
+  }
+}
