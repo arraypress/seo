@@ -9,6 +9,8 @@ export interface BuildHeadOptions {
   twitterCard?: string;
   twitterSite?: string;
   twitterCreator?: string;
+  /** twitter:image:alt — only emitted when an `image` is set. */
+  twitterImageAlt?: string;
   locale?: string;
   articlePublished?: string;
   articleModified?: string;
@@ -21,6 +23,12 @@ export interface BuildHeadOptions {
   };
   hreflang?: Array<{ lang: string; url: string }>;
   jsonLd?: object | object[];
+  /** Extra `<meta>` tags — each object's keys become attributes
+   *  (`true` → bare attribute, null/false/undefined → omitted). For
+   *  anything the typed options don't cover (viewport, theme-color, …). */
+  meta?: Array<Record<string, string | number | boolean | undefined>>;
+  /** Extra `<link>` tags — same attribute rules as `meta`. */
+  link?: Array<Record<string, string | number | boolean | undefined>>;
 }
 
 /** Build a complete <head> HTML string from options. */

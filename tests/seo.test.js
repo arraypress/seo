@@ -126,3 +126,38 @@ describe('escapeHtml', () => {
     assert.equal(escapeHtml(undefined), '');
   });
 });
+
+describe('buildHead — extra meta/link passthrough (v1.1.0)', () => {
+  it('emits twitter:image:alt only with an image', () => {
+    assert.ok(buildHead({ image: '/og.png', twitterImageAlt: 'Alt' }).includes('name="twitter:image:alt" content="Alt"'));
+    assert.ok(!buildHead({ twitterImageAlt: 'Alt' }).includes('twitter:image:alt'));
+  });
+
+  it('renders extra meta tags with arbitrary attributes', () => {
+    const html = buildHead({
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
+        { name: 'theme-color', content: '#0a0a0a', media: '(prefers-color-scheme: dark)' },
+      ],
+    });
+    assert.ok(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1.0">'));
+    assert.ok(html.includes('media="(prefers-color-scheme: dark)"'));
+  });
+
+  it('renders extra link tags', () => {
+    const html = buildHead({ link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }] });
+    assert.ok(html.includes('<link rel="icon" type="image/svg+xml" href="/favicon.svg">'));
+  });
+
+  it('true → bare attribute, null/false/undefined → omitted', () => {
+    const html = buildHead({ link: [{ rel: 'preconnect', href: 'https://x', crossorigin: true, foo: null, bar: false }] });
+    assert.ok(html.includes('<link rel="preconnect" href="https://x" crossorigin>'));
+    assert.ok(!html.includes('foo'));
+    assert.ok(!html.includes('bar'));
+  });
+
+  it('escapes attribute values', () => {
+    const html = buildHead({ meta: [{ name: 'x', content: 'a & "b"' }] });
+    assert.ok(html.includes('content="a &amp; &quot;b&quot;"'));
+  });
+});

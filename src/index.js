@@ -84,9 +84,10 @@ function esc(str) {
  */
 export function buildHead(options = {}) {
   const { title, description, image, url, type = 'website', robots, siteName,
-    twitterCard, twitterSite, twitterCreator,
+    twitterCard, twitterSite, twitterCreator, twitterImageAlt,
     locale, articlePublished, articleModified, articleAuthor,
-    verification = {}, hreflang = [], jsonLd } = options;
+    verification = {}, hreflang = [], jsonLd,
+    meta = [], link = [] } = options;
 
   const parts = [];
 
@@ -115,6 +116,7 @@ export function buildHead(options = {}) {
   if (title) parts.push(`<meta name="twitter:title" content="${esc(title)}">`);
   if (description) parts.push(`<meta name="twitter:description" content="${esc(description)}">`);
   if (image) parts.push(`<meta name="twitter:image" content="${esc(image)}">`);
+  if (image && twitterImageAlt) parts.push(`<meta name="twitter:image:alt" content="${esc(twitterImageAlt)}">`);
   if (twitterSite) parts.push(`<meta name="twitter:site" content="${esc(twitterSite)}">`);
   if (twitterCreator) parts.push(`<meta name="twitter:creator" content="${esc(twitterCreator)}">`);
 
@@ -128,6 +130,20 @@ export function buildHead(options = {}) {
   for (const tag of hreflang) {
     if (tag.lang && tag.url) parts.push(`<link rel="alternate" hreflang="${esc(tag.lang)}" href="${esc(tag.url)}">`);
   }
+
+  // Extra pass-through <meta>/<link> tags — anything the typed options
+  // don't cover (viewport, theme-color, favicon, sitemap link, …). Each
+  // object's keys become attributes: `true` → bare attribute, and
+  // null/false/undefined → omitted.
+  const attrTag = (tag, attrs) => {
+    const a = Object.entries(attrs)
+      .filter(([, v]) => v != null && v !== false)
+      .map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${esc(String(v))}"`))
+      .join('');
+    return `<${tag}${a}>`;
+  };
+  for (const m of meta) parts.push(attrTag('meta', m));
+  for (const l of link) parts.push(attrTag('link', l));
 
   // JSON-LD injection
   const ldItems = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
