@@ -83,8 +83,9 @@ function esc(str) {
  * });
  */
 export function buildHead(options = {}) {
-  const { title, description, image, url, type = 'website', robots, siteName,
-    twitterCard, twitterSite, twitterCreator, twitterImageAlt,
+  const { title, description, image, imageWidth, imageHeight, imageAlt,
+    url, type = 'website', robots, maxSnippet = true, siteName,
+    twitterCard, twitterSite, twitterCreator, twitterImageAlt, twitterFallback = true,
     locale, articlePublished, articleModified, articleAuthor,
     verification = {}, hreflang = [], jsonLd,
     meta = [], link = [] } = options;
@@ -92,9 +93,25 @@ export function buildHead(options = {}) {
   const parts = [];
 
   if (title) parts.push(`<title>${esc(title)}</title>`);
-  if (url) parts.push(`<link rel="canonical" href="${esc(url)}">`);
+
+  // Canonical — omitted on noindex pages (per Google's recommendation).
+  const noindex = typeof robots === 'string' && /\bnoindex\b/i.test(robots);
+  if (url && !noindex) parts.push(`<link rel="canonical" href="${esc(url)}">`);
   if (description) parts.push(`<meta name="description" content="${esc(description)}">`);
-  if (robots) parts.push(`<meta name="robots" content="${esc(robots)}">`);
+
+  // Robots — merge Google's snippet-size maxima so rich snippets aren't capped
+  // (the modern default). `robots: false` opts out of the tag entirely;
+  // `maxSnippet: false` keeps only the caller's directive.
+  if (robots !== false) {
+    const tokens = typeof robots === 'string' ? robots.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    if (maxSnippet !== false) {
+      for (const d of ['max-image-preview:large', 'max-snippet:-1', 'max-video-preview:-1']) {
+        const key = d.slice(0, d.indexOf(':'));
+        if (!tokens.some((t) => t.startsWith(key))) tokens.push(d);
+      }
+    }
+    if (tokens.length) parts.push(`<meta name="robots" content="${esc(tokens.join(', '))}">`);
+  }
 
   // Open Graph
   if (title) parts.push(`<meta property="og:title" content="${esc(title)}">`);
@@ -102,6 +119,9 @@ export function buildHead(options = {}) {
   if (url) parts.push(`<meta property="og:url" content="${esc(url)}">`);
   if (description) parts.push(`<meta property="og:description" content="${esc(description)}">`);
   if (image) parts.push(`<meta property="og:image" content="${esc(image)}">`);
+  if (image && imageWidth) parts.push(`<meta property="og:image:width" content="${esc(imageWidth)}">`);
+  if (image && imageHeight) parts.push(`<meta property="og:image:height" content="${esc(imageHeight)}">`);
+  if (image && imageAlt) parts.push(`<meta property="og:image:alt" content="${esc(imageAlt)}">`);
   if (siteName) parts.push(`<meta property="og:site_name" content="${esc(siteName)}">`);
   if (locale) parts.push(`<meta property="og:locale" content="${esc(locale)}">`);
 
@@ -113,10 +133,16 @@ export function buildHead(options = {}) {
   // Twitter Card
   const cardType = twitterCard || (image ? 'summary_large_image' : 'summary');
   parts.push(`<meta name="twitter:card" content="${esc(cardType)}">`);
-  if (title) parts.push(`<meta name="twitter:title" content="${esc(title)}">`);
-  if (description) parts.push(`<meta name="twitter:description" content="${esc(description)}">`);
-  if (image) parts.push(`<meta name="twitter:image" content="${esc(image)}">`);
-  if (image && twitterImageAlt) parts.push(`<meta name="twitter:image:alt" content="${esc(twitterImageAlt)}">`);
+  // Twitter falls back to the Open Graph title/description/image automatically,
+  // so those duplicates are suppressed by default. `twitterFallback: false`
+  // emits them explicitly.
+  if (twitterFallback === false) {
+    if (title) parts.push(`<meta name="twitter:title" content="${esc(title)}">`);
+    if (description) parts.push(`<meta name="twitter:description" content="${esc(description)}">`);
+    if (image) parts.push(`<meta name="twitter:image" content="${esc(image)}">`);
+  }
+  const twAlt = twitterImageAlt || imageAlt;
+  if (image && twAlt) parts.push(`<meta name="twitter:image:alt" content="${esc(twAlt)}">`);
   if (twitterSite) parts.push(`<meta name="twitter:site" content="${esc(twitterSite)}">`);
   if (twitterCreator) parts.push(`<meta name="twitter:creator" content="${esc(twitterCreator)}">`);
 
@@ -206,6 +232,32 @@ export function robotsTxt(options = {}) {
   for (const rule of customRules) lines.push(rule);
   if (sitemapUrl) lines.push('', `Sitemap: ${sitemapUrl}`);
   return lines.join('\n') + '\n';
+}
+
+/**
+ * Strip tracking query parameters (and the hash) from a URL to derive a clean
+ * canonical — so UTM tags and ad-click ids don't fork a page into duplicate
+ * canonicals. Returns the input unchanged if it can't be parsed.
+ *
+ * @param {string} input - The URL to clean.
+ * @returns {string} The canonicalised URL.
+ *
+ * @example
+ * canonicalize('https://example.com/p?utm_source=x&id=7');
+ * // => 'https://example.com/p?id=7'
+ */
+export function canonicalize(input) {
+  try {
+    const u = new URL(input);
+    const tracking = /^(utm_[\w-]+|gclid|gbraid|wbraid|dclid|fbclid|msclkid|yclid|igshid|mc_eid|mc_cid|_hsenc|_hsmi|vero_id|oly_anon_id|oly_enc_id)$/i;
+    for (const key of [...u.searchParams.keys()]) {
+      if (tracking.test(key)) u.searchParams.delete(key);
+    }
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return input;
+  }
 }
 
 /** @see esc */

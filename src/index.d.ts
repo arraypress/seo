@@ -2,15 +2,27 @@ export interface BuildHeadOptions {
   title?: string;
   description?: string;
   image?: string;
+  /** og:image:width — only emitted when an `image` is set. */
+  imageWidth?: number | string;
+  /** og:image:height — only emitted when an `image` is set. */
+  imageHeight?: number | string;
+  /** og:image:alt (and the twitter:image:alt fallback) — only with an `image`. */
+  imageAlt?: string;
   url?: string;
   type?: string;
-  robots?: string;
+  /** Robots directive (e.g. `'noindex, nofollow'`). `false` omits the tag.
+   *  Google snippet-size maxima are merged in unless `maxSnippet` is `false`. */
+  robots?: string | false;
+  /** Append `max-snippet`/`max-image-preview`/`max-video-preview` defaults. @default true */
+  maxSnippet?: boolean;
   siteName?: string;
   twitterCard?: string;
   twitterSite?: string;
   twitterCreator?: string;
-  /** twitter:image:alt — only emitted when an `image` is set. */
+  /** twitter:image:alt — only emitted when an `image` is set. Falls back to `imageAlt`. */
   twitterImageAlt?: string;
+  /** Suppress twitter:title/description/image (Twitter falls back to Open Graph). @default true */
+  twitterFallback?: boolean;
   locale?: string;
   articlePublished?: string;
   articleModified?: string;
@@ -47,6 +59,9 @@ export interface RobotsTxtOptions {
 
 /** Generate robots.txt content. */
 export function robotsTxt(options?: RobotsTxtOptions): string;
+
+/** Strip tracking query params (and the hash) from a URL for a clean canonical. */
+export function canonicalize(input: string): string;
 
 /** Escape HTML entities in a string. */
 export function escapeHtml(str: string): string;

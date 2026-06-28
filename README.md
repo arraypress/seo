@@ -41,13 +41,17 @@ Build a complete `<head>` HTML string from options.
 | `title` | `string` | Page title |
 | `description` | `string` | Meta description |
 | `image` | `string` | OG/Twitter image URL |
-| `url` | `string` | Canonical URL |
+| `imageWidth` / `imageHeight` | `number \| string` | `og:image:width` / `og:image:height` (with `image`) |
+| `imageAlt` | `string` | `og:image:alt` + `twitter:image:alt` fallback (with `image`) |
+| `url` | `string` | Canonical URL (dropped automatically on `noindex`) |
 | `type` | `string` | OG type (default: `website`) |
-| `robots` | `string` | Robots directive |
+| `robots` | `string \| false` | Robots directive; Google snippet maxima merged in. `false` omits the tag |
+| `maxSnippet` | `boolean` | Merge `max-snippet`/`max-image-preview`/`max-video-preview` (default `true`) |
 | `siteName` | `string` | OG site name |
 | `twitterCard` | `string` | Twitter card type (auto-detected from image) |
 | `twitterSite` | `string` | Twitter @username for site |
 | `twitterCreator` | `string` | Twitter @username for author |
+| `twitterFallback` | `boolean` | Suppress `twitter:title`/`description`/`image` — Twitter falls back to OG (default `true`) |
 | `locale` | `string` | OG locale |
 | `articlePublished` | `string` | Article published date (ISO 8601) |
 | `articleModified` | `string` | Article modified date (ISO 8601) |
@@ -55,6 +59,10 @@ Build a complete `<head>` HTML string from options.
 | `verification` | `object` | Site verification codes (`google`, `bing`, `pinterest`, `yandex`) |
 | `hreflang` | `array` | Alternate language links (`{ lang, url }`) |
 | `jsonLd` | `object | array` | JSON-LD structured data to inject |
+
+### `canonicalize(url)`
+
+Strip tracking params (`utm_*`, `gclid`, `fbclid`, `msclkid`, …) and the hash from a URL to derive a clean canonical — so ad-click and campaign variants don't fork into duplicate canonicals. Returns the input unchanged if it can't be parsed.
 
 ### `injectHead(html, headHtml)`
 

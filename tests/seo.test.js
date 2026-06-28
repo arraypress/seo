@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHead, injectHead, robotsTxt, escapeHtml } from '../src/index.js';
+import { buildHead, injectHead, robotsTxt, escapeHtml, canonicalize } from '../src/index.js';
 
 describe('buildHead', () => {
   it('renders title only', () => {
@@ -15,9 +15,22 @@ describe('buildHead', () => {
     const html = buildHead({ description: 'A test page' });
     assert.ok(html.includes('<meta name="description" content="A test page">'));
   });
-  it('renders robots directive', () => {
+  it('merges snippet maxima into the robots directive', () => {
     const html = buildHead({ robots: 'noindex, nofollow' });
-    assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'));
+    assert.ok(/content="noindex, nofollow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/.test(html));
+  });
+  it('emits snippet maxima by default with no robots option', () => {
+    const html = buildHead({ title: 'X' });
+    assert.ok(html.includes('max-image-preview:large'));
+    assert.ok(html.includes('max-snippet:-1'));
+  });
+  it('omits the robots tag when robots is false', () => {
+    const html = buildHead({ robots: false, title: 'X' });
+    assert.ok(!html.includes('name="robots"'));
+  });
+  it('omits canonical on noindex', () => {
+    const html = buildHead({ url: 'https://example.com/p', robots: 'noindex' });
+    assert.ok(!html.includes('rel="canonical"'));
   });
   it('renders Open Graph tags', () => {
     const html = buildHead({ title: 'OG Test', url: 'https://example.com', description: 'Desc', image: 'https://example.com/img.png', siteName: 'My Site', locale: 'en_US' });
@@ -38,14 +51,32 @@ describe('buildHead', () => {
     assert.ok(html.includes('article:modified_time'));
     assert.ok(html.includes('article:author'));
   });
-  it('renders Twitter Card tags', () => {
+  it('renders Twitter Card tags and dedupes OG duplicates by default', () => {
     const html = buildHead({ title: 'Tweet', description: 'Desc', image: 'https://img.png', twitterSite: '@site', twitterCreator: '@author' });
     assert.ok(html.includes('twitter:card" content="summary_large_image"'));
-    assert.ok(html.includes('twitter:title'));
-    assert.ok(html.includes('twitter:description'));
-    assert.ok(html.includes('twitter:image'));
     assert.ok(html.includes('twitter:site'));
     assert.ok(html.includes('twitter:creator'));
+    // Suppressed — Twitter falls back to Open Graph.
+    assert.ok(!html.includes('twitter:title'));
+    assert.ok(!html.includes('name="twitter:description"'));
+    assert.ok(!html.includes('name="twitter:image"'));
+  });
+  it('emits duplicated Twitter tags when twitterFallback is false', () => {
+    const html = buildHead({ title: 'Tweet', description: 'Desc', image: 'https://img.png', twitterFallback: false });
+    assert.ok(html.includes('twitter:title'));
+    assert.ok(html.includes('name="twitter:description"'));
+    assert.ok(html.includes('name="twitter:image"'));
+  });
+  it('renders og:image width/height/alt (and twitter:image:alt fallback)', () => {
+    const html = buildHead({ image: 'https://img.png', imageWidth: 1200, imageHeight: 630, imageAlt: 'Cover' });
+    assert.ok(html.includes('og:image:width" content="1200"'));
+    assert.ok(html.includes('og:image:height" content="630"'));
+    assert.ok(html.includes('og:image:alt" content="Cover"'));
+    assert.ok(html.includes('twitter:image:alt" content="Cover"'));
+  });
+  it('canonicalize strips tracking params and hash', () => {
+    assert.equal(canonicalize('https://example.com/p?utm_source=x&id=7&fbclid=abc#frag'), 'https://example.com/p?id=7');
+    assert.equal(canonicalize('/relative'), '/relative');
   });
   it('defaults Twitter Card to summary without image', () => {
     const html = buildHead({ title: 'No Image' });
